@@ -1,0 +1,18 @@
+{
+  "mode": "ZChat",
+  "accountId": null,
+  "model": "x-preview-l",
+  "effort": "max",
+  "headless": true,
+  "proxy": null,
+  "browser": null,
+  "provider": "tempmail",
+  "captcha": "auto",
+  "autoAttempts": 6,
+  "interval": 65,
+  "insecure": false,
+  "maxTranscript": 2000,
+  "zcodeUrl": "https://zcode.z.ai/login",
+  "zcodeLocalUrl": "http://127.0.0.1:3030",
+  "loginTimeoutMs": 180000
+}

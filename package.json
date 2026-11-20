@@ -1,0 +1,25 @@
+{
+  "name": "zai-regger",
+  "version": "1.0.0",
+  "description": "Z.AI account registration and an interactive ZChat / ZCode client, configured through config.json",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "bin": {
+    "zai-regger": "./zai-regger.js"
+  },
+  "scripts": {
+    "start": "node zai-regger.js",
+    "cli": "node zai-regger.js",
+    "regger": "node regger.js",
+    "selftest": "node regger.js --selftest",
+    "test": "node regger.js --selftest",
+    "test:api": "node test/api.mjs",
+    "test:chat": "node test/chat.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.65.1"
+  }
+}
