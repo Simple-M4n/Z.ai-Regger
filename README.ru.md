@@ -51,7 +51,7 @@ node zai-regger.js --mode ZCode --count 1  # тот же поток, помет�
 | `browser` | `null` | `null` — автоопределение, иначе `chrome`, `msedge`, `chromium` |
 | `provider` | `"tempmail"` | `mailtm`, `tempmail`, `guerrilla`, `cfmail`, `manual` |
 | `captcha` | `"auto"` | `auto`, `browser`, `param`, `none` |
-| `autoAttempts` | `6` | Число попыток решения слайдера на аккаунт |
+| `autoAttempts` | `10` | Число попыток решения слайдера на аккаунт |
 | `interval` | `65` | Пауза в секундах между регистрациями |
 | `insecure` | `false` | Не проверять TLS-сертификаты |
 
@@ -67,7 +67,7 @@ node zai-regger.js --mode ZCode --count 1  # тот же поток, помет�
   "browser": null,
   "provider": "tempmail",
   "captcha": "auto",
-  "autoAttempts": 6,
+  "autoAttempts": 10,
   "interval": 65,
   "insecure": false
 }
@@ -129,3 +129,6 @@ node zai-regger.js --proxy none --count 1   # отключить прокси и
 npm test
 node zai-regger.js --selftest
 ```
+
+Решатель слайдера по умолчанию не пишет отладочные файлы. Установите
+`ZAI_SLIDER_DEBUG=1`, чтобы сохранить изображения пазла и скриншоты в `debug/`.

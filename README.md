@@ -50,7 +50,7 @@ selected mode is recorded on every account entry for later use.
 | `browser` | `null` | `null` = autodetect, otherwise `chrome`, `msedge`, `chromium` |
 | `provider` | `"tempmail"` | `mailtm`, `tempmail`, `guerrilla`, `cfmail`, `manual` |
 | `captcha` | `"auto"` | `auto`, `browser`, `param`, `none` |
-| `autoAttempts` | `6` | Slider solver attempts per account |
+| `autoAttempts` | `10` | Slider solver attempts per account |
 | `interval` | `65` | Pause in seconds between registrations |
 | `insecure` | `false` | Skip TLS certificate verification |
 
@@ -66,7 +66,7 @@ Example:
   "browser": null,
   "provider": "tempmail",
   "captcha": "auto",
-  "autoAttempts": 6,
+  "autoAttempts": 10,
   "interval": 65,
   "insecure": false
 }
@@ -128,3 +128,6 @@ or logs belong in the repository.
 npm test
 node zai-regger.js --selftest
 ```
+
+The slider solver writes no debug files by default. Set `ZAI_SLIDER_DEBUG=1`
+to save puzzle images and screenshots under `debug/` when investigating failures.

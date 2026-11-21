@@ -3,7 +3,7 @@
 // URLs, and checks that analyzeGap recovers the hole position.
 // Run: node test/slider-analyzer.mjs
 import { chromium } from 'playwright-core';
-import { analyzeGap } from '../lib/slider.js';
+import { analyzeGap, rankCandidates } from '../lib/slider.js';
 import { resolveBrowserChannel } from '../lib/captcha.js';
 
 let failed = 0;
@@ -166,6 +166,34 @@ try {
 
   const bad = await page.evaluate(analyzeGap, ['data:image/png;base64,AAAA', null]);
   assert('garbage image -> error object', !!bad.error, bad.error || JSON.stringify(bad));
+
+  // Ranking: two agreeing weaker methods beat one isolated louder peak;
+  // already-failed and already-tried candidates are pushed down.
+  const choices = [
+    { method: 'hole', gapX: 100, confidence: 0.62, score: 50 },
+    { method: 'seam', gapX: 180, confidence: 0.66, score: 30 },
+    { method: 'zncc', gapX: 185, confidence: 0.60, score: 0.5 },
+  ];
+  const ranked = rankCandidates(choices);
+  assert(
+    'consensus outranks lone peak',
+    ranked[0].method === 'seam',
+    ranked.map((c) => `${c.method}:${c.rank}`).join(' ')
+  );
+  const afterFailure = rankCandidates(choices, [
+    { method: 'seam', gapX: 180, accurate: true },
+  ]);
+  assert(
+    'accurate failure demotes its method',
+    afterFailure[0].method !== 'seam',
+    afterFailure.map((c) => `${c.method}:${c.rank}`).join(' ')
+  );
+  const afterExclude = rankCandidates(choices, [], [{ method: 'seam', gapX: 180 }]);
+  assert(
+    'same-puzzle retry skips tried peak',
+    afterExclude[0].method !== 'seam',
+    afterExclude.map((c) => `${c.method}:${c.rank}`).join(' ')
+  );
 } finally {
   await browser.close();
 }

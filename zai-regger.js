@@ -49,7 +49,7 @@ Captcha:
                            auto:    background Chrome/Edge solves the slider
                            browser: visible window, you solve the slider
                            param:   reuse a pre-solved captcha_verify_param
-  --auto-attempts N        auto-solver tries per account (default 6)
+  --auto-attempts N        auto-solver tries per account (default 10)
   --captcha-file FILE      file with captcha_verify_param for --captcha param
   --captcha-timeout SEC    max wait for slider (default 300)
 
@@ -145,7 +145,7 @@ function parseCli() {
   if (!['mailtm', 'tempmail', 'guerrilla', 'cfmail', 'manual'].includes(provider)) {
     fail('--provider must be mailtm | tempmail | guerrilla | cfmail | manual');
   }
-  const autoAttempts = Number.parseInt(pick('auto-attempts', String(defaults.autoAttempts ?? 6)), 10);
+  const autoAttempts = Number.parseInt(pick('auto-attempts', String(defaults.autoAttempts ?? 10)), 10);
   if (!Number.isInteger(autoAttempts) || autoAttempts < 1) fail('--auto-attempts must be a positive integer');
 
   const captchaFile = pick('captcha-file', null);
