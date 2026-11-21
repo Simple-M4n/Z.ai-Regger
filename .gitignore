@@ -1,5 +1,8 @@
 # Real credentials and local state — never commit these.
 accounts.local.json
+slider-memory.json
+proxies*.txt
+proxy-list*
 *.token
 *.jwt
 *.log

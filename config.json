@@ -3,11 +3,13 @@
   "headless": true,
   "proxy": null,
   "proxyType": null,
+  "proxyFile": null,
   "proxyBypass": null,
   "browser": null,
   "provider": "tempmail",
   "captcha": "auto",
   "autoAttempts": 10,
   "interval": 65,
-  "insecure": false
+  "insecure": false,
+  "verbose": false
 }

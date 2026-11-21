@@ -3,7 +3,14 @@
 // URLs, and checks that analyzeGap recovers the hole position.
 // Run: node test/slider-analyzer.mjs
 import { chromium } from 'playwright-core';
-import { analyzeGap, rankCandidates } from '../lib/slider.js';
+import {
+  analyzeGap,
+  rankCandidates,
+  hammingHex,
+  rememberedGap,
+  rememberedFailures,
+  recordSliderOutcome,
+} from '../lib/slider.js';
 import { resolveBrowserChannel } from '../lib/captcha.js';
 
 let failed = 0;
@@ -151,6 +158,7 @@ try {
   assert('synthetic gapX constant', synth.gapX === GEN);
 
   const mad = await page.evaluate(analyzeGap, [synth.bg, synth.block]);
+  assert('analysis returns perceptual fingerprint', /^[0-9a-f]{32}$/.test(mad.fingerprint || ''), mad.fingerprint);
   assert(
     'ZNCC method recovers hole',
     mad.method === 'zncc' && Math.abs(mad.gapX - synth.gapX) <= 3,
@@ -194,6 +202,29 @@ try {
     afterExclude[0].method !== 'seam',
     afterExclude.map((c) => `${c.method}:${c.rank}`).join(' ')
   );
+
+  // Persistent puzzle memory: a previously successful gap is returned for the
+  // same or a slightly recompressed image, and never for an unrelated one.
+  const fp = '0123456789abcdef0123456789abcdef';
+  assert('hamming distance is exact for equal hashes', hammingHex(fp, fp) === 0);
+  assert(
+    'hamming distance tolerates small changes',
+    hammingHex(fp, '0123456789abcdff0123456789abcdef') === 1
+  );
+  const memory = { items: [] };
+  recordSliderOutcome(memory, fp, 173, false, 'hole');
+  assert('failures alone are not used as answers', rememberedGap(memory, fp) === null);
+  assert(
+    'failed gap is remembered for avoidance',
+    rememberedFailures(memory, fp).some((x) => x.gapX === 173 && x.method === 'hole')
+  );
+  recordSliderOutcome(memory, fp, 173, true);
+  assert('successful gap is remembered', rememberedGap(memory, fp) === 173);
+  assert(
+    'near-identical image finds the memorized gap',
+    rememberedGap(memory, '0123456789abcde00123456789abcdef') === 173
+  );
+  assert('unrelated image has no memory', rememberedGap(memory, 'f'.repeat(32)) === null);
 } finally {
   await browser.close();
 }

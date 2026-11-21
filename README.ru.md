@@ -47,6 +47,7 @@ node zai-regger.js --mode ZCode --count 1  # тот же поток, помет�
 | `headless` | `true` | `true` — фоновый браузер, `false` — видимое окно |
 | `proxy` | `null` | URL/объект прокси либо `null` (прямое соединение) |
 | `proxyType` | `null` | Тип по умолчанию для прокси вида `host:port` |
+| `proxyFile` | `null` | Файл со списком прокси, смена на каждый аккаунт |
 | `proxyBypass` | `null` | Хосты через запятую, минующие прокси (только браузер) |
 | `browser` | `null` | `null` — автоопределение, иначе `chrome`, `msedge`, `chromium` |
 | `provider` | `"tempmail"` | `mailtm`, `tempmail`, `guerrilla`, `cfmail`, `manual` |
@@ -54,6 +55,7 @@ node zai-regger.js --mode ZCode --count 1  # тот же поток, помет�
 | `autoAttempts` | `10` | Число попыток решения слайдера на аккаунт |
 | `interval` | `65` | Пауза в секундах между регистрациями |
 | `insecure` | `false` | Не проверять TLS-сертификаты |
+| `verbose` | `false` | Подробные диагностические сообщения слайдера/формы |
 
 Пример:
 
@@ -69,7 +71,8 @@ node zai-regger.js --mode ZCode --count 1  # тот же поток, помет�
   "captcha": "auto",
   "autoAttempts": 10,
   "interval": 65,
-  "insecure": false
+  "insecure": false,
+  "verbose": false
 }
 ```
 
@@ -111,9 +114,18 @@ node zai-regger.js --proxy none --count 1   # отключить прокси и
 
 - `--mode ZChat|ZCode`, `--count N`, `--provider K`, `--interval SEC`
 - `--captcha auto|browser|param|none`, `--auto-attempts N`, `--captcha-file FILE`
-- `--proxy URL`, `--proxy-type TYPE`, `--proxy-bypass LIST`
+- `--proxy URL`, `--proxy-type TYPE`, `--proxy-file LIST`, `--proxy-bypass LIST`
 - `--browser CHANNEL`, `--headed`, `--insecure`
-- `--out FILE`, `--selftest`
+- `--out FILE`, `--selftest`, `--verbose`
+
+## Ротация прокси
+
+Aliyun привязывает риск-состояние капчи к IP: один адрес на всю пачку делает
+последующие аккаунты гораздо сложнее. Запишите прокси по одному на строку (или
+JSON-массивом) в локальный файл и передайте `--proxy-file proxies.txt` — каждый
+аккаунт получит следующий прокси. Пустые строки и комментарии `#` игнорируются,
+для записей вида `host:port` используется `--proxy-type`. Сам файл в репозиторий
+не добавляется.
 
 ## Аккаунты и приватность
 
@@ -121,7 +133,10 @@ node zai-regger.js --proxy none --count 1   # отключить прокси и
 (`%APPDATA%\Z.ai-Regger\accounts.json` в Windows, аналогичный каталог конфига
 в других системах). Переопределить можно флагом `--out` или переменной
 `ZAI_REGGER_ACCOUNTS`. Файл `accounts.json` в репозитории — пустой шаблон `[]`;
-реальные аккаунты, JWT, пароли и логи в репозиторий не добавляются.
+реальные аккаунты, JWT, пароли и логи в репозиторий не добавляются. Рядом с
+`accounts.json` решатель хранит небольшой `slider-memory.json`: только перцептивный
+хеш повторяющихся изображений пазла и сработавшую координату, без самих картинок
+и данных аккаунтов.
 
 ## Тесты
 

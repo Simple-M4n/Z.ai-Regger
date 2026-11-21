@@ -20,7 +20,14 @@ import { ZaiClient, extractJwt, classifyFailure, BASE } from './lib/zai.js';
 import { solveSignupCaptcha, finishSignupBrowser, resolveBrowserChannel } from './lib/captcha.js';
 import { buildProvider, extractVerify, randStr, randPassword } from './lib/mail.js';
 import { Transport, sleep } from './lib/http.js';
-import { normalizeProxy, normalizeProxyType, proxyForPlaywright, describeProxy } from './lib/proxy.js';
+import {
+  normalizeProxy,
+  normalizeProxyType,
+  proxyForPlaywright,
+  describeProxy,
+  parseProxyList,
+  createRotator,
+} from './lib/proxy.js';
 
 const USAGE = `
 zai-regger — automated registration for ${BASE}
@@ -65,6 +72,7 @@ Network / browser:
                            socks4:// / socks4a:// / socks5:// / socks5h://
   --proxy-type TYPE        http | https | socks4 | socks4a | socks5 | socks5h
                            (used when --proxy is a bare host:port)
+  --proxy-file FILE        one proxy per line (or JSON array); rotated per account
   --proxy-bypass LIST      comma-separated hosts bypassing the proxy (browser)
   --insecure               skip TLS certificate verification
   --browser CHANNEL        chrome | msedge | chromium (default: autodetect)
@@ -72,6 +80,7 @@ Network / browser:
 
 Misc:
   --selftest               connectivity + mailbox smoke test, no registration
+  --verbose                show detailed slider/form diagnostics (default quiet)
   -h, --help               this help
 `;
 
@@ -105,12 +114,14 @@ function parseCli() {
         'mail-domain': { type: 'string' },
         proxy: { type: 'string' },
         'proxy-type': { type: 'string' },
+        'proxy-file': { type: 'string' },
         'proxy-bypass': { type: 'string' },
         insecure: { type: 'boolean' },
         browser: { type: 'string' },
         headed: { type: 'boolean' },
         headless: { type: 'boolean' },
         selftest: { type: 'boolean' },
+        verbose: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
       },
       allowPositionals: true,
@@ -162,12 +173,24 @@ function parseCli() {
     fail(err.message);
   }
 
+  const proxyFile = opt['proxy-file'] || defaults.proxyFile || null;
+  let proxyList = [];
+  if (proxyFile) {
+    try {
+      proxyList = parseProxyList(fs.readFileSync(path.resolve(proxyFile), 'utf8'), proxyType);
+    } catch (err) {
+      fail(err.message);
+    }
+  }
+
   const headless = opt.headed ? false : opt.headless ? true : defaults.headless !== false;
   return {
     mode,
     proxyType,
     proxyBypass: pick('proxy-bypass', defaults.proxyBypass || null),
     proxy,
+    proxyFile,
+    proxyList,
     count,
     provider,
     email: opt.email || null,
@@ -188,11 +211,20 @@ function parseCli() {
     browser: opt.browser || defaults.browser || null,
     headless,
     selftest: !!opt.selftest,
+    verbose: opt.verbose !== undefined ? !!opt.verbose : !!defaults.verbose,
   };
 }
 
 const ts = () => new Date().toISOString().slice(11, 19);
 const log = (msg) => console.log(`[${ts()}] ${msg}`);
+
+// The solver emits a lot of useful-but-noisy trace lines. Keep the normal
+// output focused on progress/results; --verbose restores the full trace.
+const SOLVER_NOISE =
+  /\[browser\]|\[form\]|\[captcha\] trigger clicked|\[auto\].*(slider found|bg=|attempt \d+\/\d+|attempt \d+: method=|aim pass|piece landed|widget:|widget says|same puzzle stayed blocked|refreshed the puzzle|trying another peak|widget start clicked|drag error)/;
+const solverLog = (verbose) => (msg) => {
+  if (verbose || !SOLVER_NOISE.test(msg)) log(msg);
+};
 
 // Transport-level retry notification (connect-phase failures only).
 const onRetry = (url, err, attempt, backoff) =>
@@ -311,7 +343,7 @@ async function registerOne(cfg, provider, rec) {
       autoAttempts: cfg.autoAttempts,
       insecure: cfg.insecure,
       onRetry,
-      log,
+      log: solverLog(cfg.verbose),
     });
     if (solved.signupResponse) {
       signupRes = { status: 200, data: solved.signupResponse, text: JSON.stringify(solved.signupResponse) };
@@ -445,18 +477,20 @@ async function main() {
     return;
   }
 
-  const provider = buildProvider(cfg.provider, {
-    proxy: cfg.proxy,
-    insecure: cfg.insecure,
-    onRetry,
-    base: cfg.mailBase,
-    sitePassword: cfg.mailPass,
-    domain: cfg.mailDomain,
-    email: cfg.email,
-  });
+  const rotator = createRotator(cfg.proxyList, true);
+  const makeProvider = (proxy) =>
+    buildProvider(cfg.provider, {
+      proxy,
+      insecure: cfg.insecure,
+      onRetry,
+      base: cfg.mailBase,
+      sitePassword: cfg.mailPass,
+      domain: cfg.mailDomain,
+      email: cfg.email,
+    });
 
   log(`zai-regger: ${cfg.count} account(s), mode=${cfg.mode}, provider=${cfg.provider}, captcha=${cfg.captcha}` +
-      `, proxy=${describeProxy(cfg.proxy)}`);
+      `, proxy=${rotator ? `${rotator.size} rotated` : describeProxy(cfg.proxy)}`);
   if ((cfg.captcha === 'auto' || cfg.captcha === 'browser') && !cfg.browser && !resolveBrowserChannel()) {
     fail('no Chrome/Edge found — pass --browser chrome|msedge or install a browser');
   }
@@ -471,9 +505,15 @@ async function main() {
       status: 'pending',
       created_at: new Date().toISOString(),
     };
+    // Each account gets its own exit IP. Aliyun ties captcha risk state to the
+    // IP, so reusing one address for a whole batch makes later accounts much
+    // harder to pass even with a correct slider placement.
+    const accountCfg = rotator ? { ...cfg, proxy: rotator.next() } : cfg;
+    const provider = makeProvider(accountCfg.proxy);
+    if (rotator) log(`    network: ${describeProxy(accountCfg.proxy)}`);
     log(`──── account ${i}/${cfg.count} (${cfg.mode}) ────`);
     try {
-      await registerOne(cfg, provider, rec);
+      await registerOne(accountCfg, provider, rec);
       if (rec.status === 'complete') ok += 1;
     } catch (err) {
       rec.status = rec.status === 'pending' ? 'failed' : rec.status;

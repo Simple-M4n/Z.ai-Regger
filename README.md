@@ -46,6 +46,7 @@ selected mode is recorded on every account entry for later use.
 | `headless` | `true` | `true` = background browser, `false` = visible window |
 | `proxy` | `null` | Proxy URL/object, or `null` for a direct connection |
 | `proxyType` | `null` | Default type for a bare `host:port` proxy |
+| `proxyFile` | `null` | File with a proxy list, rotated once per account |
 | `proxyBypass` | `null` | Comma-separated hosts bypassing the proxy (browser only) |
 | `browser` | `null` | `null` = autodetect, otherwise `chrome`, `msedge`, `chromium` |
 | `provider` | `"tempmail"` | `mailtm`, `tempmail`, `guerrilla`, `cfmail`, `manual` |
@@ -53,6 +54,7 @@ selected mode is recorded on every account entry for later use.
 | `autoAttempts` | `10` | Slider solver attempts per account |
 | `interval` | `65` | Pause in seconds between registrations |
 | `insecure` | `false` | Skip TLS certificate verification |
+| `verbose` | `false` | Print detailed slider/form diagnostics |
 
 Example:
 
@@ -68,7 +70,8 @@ Example:
   "captcha": "auto",
   "autoAttempts": 10,
   "interval": 65,
-  "insecure": false
+  "insecure": false,
+  "verbose": false
 }
 ```
 
@@ -110,9 +113,17 @@ Run `node zai-regger.js --help` for the full list. Main flags:
 
 - `--mode ZChat|ZCode`, `--count N`, `--provider K`, `--interval SEC`
 - `--captcha auto|browser|param|none`, `--auto-attempts N`, `--captcha-file FILE`
-- `--proxy URL`, `--proxy-type TYPE`, `--proxy-bypass LIST`
+- `--proxy URL`, `--proxy-type TYPE`, `--proxy-file LIST`, `--proxy-bypass LIST`
 - `--browser CHANNEL`, `--headed`, `--insecure`
-- `--out FILE`, `--selftest`
+- `--out FILE`, `--selftest`, `--verbose`
+
+## Proxy rotation
+
+Aliyun ties captcha risk state to the exit IP, so one address for a whole batch
+makes later accounts much harder to pass. Put one proxy per line (or a JSON
+array) in a local file and pass `--proxy-file proxies.txt` — each account gets
+the next proxy. `#` comments and blank lines are ignored; bare `host:port`
+entries use `--proxy-type`. The proxy file is never copied into the repository.
 
 ## Accounts and privacy
 
@@ -120,7 +131,10 @@ Registered accounts are written outside the repository by default
 (`%APPDATA%\Z.ai-Regger\accounts.json` on Windows, equivalent config directory
 elsewhere). Override with `--out` or `ZAI_REGGER_ACCOUNTS`. The committed
 `accounts.json` is an empty `[]` template; no real accounts, JWTs, passwords
-or logs belong in the repository.
+or logs belong in the repository. The solver also keeps a small
+`slider-memory.json` next to `accounts.json`: it stores only a perceptual hash
+of reused puzzle images and the gap that passed, never image bytes or account
+data.
 
 ## Tests
 

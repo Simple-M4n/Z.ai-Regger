@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import net from 'node:net';
-import { normalizeProxy, normalizeProxyType, proxyInfo, proxyForPlaywright, describeProxy } from '../lib/proxy.js';
+import {
+  normalizeProxy,
+  normalizeProxyType,
+  proxyInfo,
+  proxyForPlaywright,
+  describeProxy,
+  parseProxyList,
+  createRotator,
+} from '../lib/proxy.js';
 import { Transport } from '../lib/http.js';
 
 let passed = 0;
@@ -160,6 +168,29 @@ function startSocksServer() {
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
+
+check('proxy list from text with comments', () => {
+  const list = parseProxyList('# first\nhttp://1.2.3.4:8080\n\n10.0.0.2:3128 # inline\n', 'socks5');
+  assert.deepEqual(list, ['http://1.2.3.4:8080', 'socks5://10.0.0.2:3128']);
+});
+
+check('proxy list from JSON array', () => {
+  const list = parseProxyList('["socks5://u:p@host:1080", {"type":"http","host":"h","port":80}]');
+  assert.deepEqual(list, ['socks5://u:p@host:1080', 'http://h:80']);
+});
+
+check('proxy list rejects empty input', () => {
+  assert.throws(() => parseProxyList('  \n  '), /empty/);
+});
+
+check('round-robin rotator cycles all proxies', () => {
+  const rotator = createRotator(['a', 'b', 'c']);
+  assert.equal(rotator.size, 3);
+  assert.equal(rotator.next(), 'a');
+  assert.equal(rotator.next(), 'b');
+  assert.equal(rotator.next(), 'c');
+  assert.equal(rotator.next(), 'a');
+});
 
 const target = await startHttpTarget();
 const socks = await startSocksServer();
